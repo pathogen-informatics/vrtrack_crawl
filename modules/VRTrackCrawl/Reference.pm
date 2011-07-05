@@ -38,19 +38,30 @@ has 'id'                        => ( is => 'rw', isa => 'Str', required   => 1 )
 has 'taxon_lookup_service'      => ( is => 'rw', isa => 'Str', required   => 1 );
 has 'taxon_name_search_service' => ( is => 'rw', isa => 'Str', required   => 1 );
 
+has 'gff_file'                  => ( is => 'rw', isa => 'Str',        lazy_build => 1 );
 has 'genus'                     => ( is => 'rw', isa => 'Str',        lazy_build => 1 );
 has 'species'                   => ( is => 'rw', isa => 'Str',        lazy_build => 1 );
 has 'translation_table'         => ( is => 'rw', isa => 'Maybe[Int]', lazy_build => 1 );
 has 'taxon_id'                  => ( is => 'rw', isa => 'Maybe[Int]', lazy_build => 1 );
 
+sub _build_gff_file
+{
+  my $self = shift;
+  my $gff_file = $self->file;
+  $gff_file =~ s!fa$!gff!;
+  $gff_file;
+}
+
+
 sub _build_translation_table
 {
   my $self = shift;
-  my $translation_table = $self->_assembly_result_set->first->translation_table;
-  unless(defined $translation_table)
+  my $assembly = $self->_assembly_result_set->first;
+  my $translation_table = $assembly->translation_table;
+  
+  if( defined $assembly->taxon_id && ! defined $translation_table)
   {  
     $translation_table = $self->_lookup_translation_table;
-    my $assembly = $self->_assembly_result_set->first;
     $assembly->translation_table($translation_table);
     $assembly->update;
   }
@@ -65,7 +76,6 @@ sub _build_taxon_id
   unless(defined $assembly->taxon_id)
   {  
     my $taxon_id = $self->_lookup_taxon_id;
-    my $assembly = $self->_assembly_result_set->first;
     $assembly->taxon_id($taxon_id);
     $assembly->update;
   }
@@ -201,14 +211,14 @@ sub TO_JSON
   my $self = shift;
   my %reference_data;
   
-  $reference_data{file} = $self->file;
+  $reference_data{file} = $self->gff_file;
   my %organism_data = ( 
     common_name       => $self->organism, 
-    id                => $self->id,
+    ID                => $self->id,
     genus             => $self->genus,
     species           => $self->species,
     translation_table => $self->translation_table,
-    taxon_id          => $self->taxon_id 
+    taxonID           => $self->taxon_id 
   );
   $reference_data{organism} = \%organism_data;
 
@@ -219,6 +229,7 @@ sub is_valid
 {
   my $self = shift;
   return 0 unless(-e $self->file);
+  return 0 unless(-e $self->gff_file);
   return 0 unless(defined $self->taxon_id);
   
   1;
