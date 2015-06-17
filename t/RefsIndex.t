@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use JSON;
 
-BEGIN { unshift(@INC, './modules') }
+BEGIN { unshift(@INC, './lib') }
 BEGIN {
     use Test::Most tests => 11;
     use DBICx::TestDatabase;
